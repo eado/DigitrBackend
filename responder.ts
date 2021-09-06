@@ -571,7 +571,9 @@ export default async (message: any, ws: WebSocket, db: Db) => {
             users.deleteMany({'domain': {'$in': district.domains}, 'email': {'$not': {'$eq': message.email}}})
             district.teachers = [message.email]
             district.students = []
-            districts.updateOne({domains: district.domains[0]}, district)
+            districts.deleteOne({domains: district.domains[0]})
+            districts.insertOne(district)
+            sendSuccess()
         },
         get_payment_stats: async () => {
             const district = await districts.findOne({domains: message.email.split('@')[1]})
