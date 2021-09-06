@@ -13,12 +13,12 @@ const client = new MongoClient("mongodb://localhost:3232")
 
 const config = JSON.parse(fs.readFileSync("config.json").toString())
 
-// const server = https.createServer({
-//     cert: fs.readFileSync(config.cert),
-//     key: fs.readFileSync(config.key)
-// })
+const server = https.createServer({
+    cert: fs.readFileSync(config.cert),
+    key: fs.readFileSync(config.key)
+})
 
-const server = http.createServer({}, (_, res) => {res.end("hello")})
+// const server = http.createServer({}, (_, res) => {res.end("hello")})
 
 const wss = new WebSocket.Server({server})
 
