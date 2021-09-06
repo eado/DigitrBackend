@@ -220,6 +220,77 @@ export default async (message: any, ws: WebSocket, db: Db) => {
         }
         send({csv_data: csvText})
     }
+
+    const approvePass = async () => {
+        const district = await districts.findOne({domains: message.email.split('@')[1]})
+        if (!district) {sendError('cof'); return}
+        const legacy = district.legacy
+        const teacher = await users.findOne({email: legacy ? message.user : message.email})
+        const user = await users.findOne({email: legacy ? message.email : message.user})
+        if (!user || !district || !teacher) { sendError('cof'); return }
+
+        const name = message.free ? 'Free' : Number(district.pass) - (user.history as any[]).filter(h => h.name !== "Free").length
+        
+        const timestamp = Date.now() / 1000
+
+        const minutes = legacy ? 5 : message.minutes;
+        const destination = legacy ? message.dest : message.destination;
+        users.updateOne({email: legacy ? message.email : message.user}, {$push: {history: {
+            destination,
+            teacher: teacher.name,
+            timestamp,
+            minutes,
+            name
+        }}})
+
+        const mess: any = {
+            user: teacher.name,
+            email: teacher.email,
+            type: 'pass_approved',
+            title: strings.passApproved,
+            subTitle: strings.passApprovedText.format(destination, minutes),
+            timestamp,
+            minutes,
+            name
+        }
+        sendMessage(mess, [legacy ? message.email : message.user])
+        sendSuccess()
+
+        setTimeout(async() => {
+            const user = await users.findOne({email: legacy ? message.email : message.user})
+            if (!user) { sendError('cof'); return }
+            if ((user.history as any[]).find(h => h.timestamp === timestamp && h.timestamp_end)) {
+                return
+            }
+
+            const time = Date.now() / 1000
+            const mess1: any = {
+                user: teacher.name,
+                email: teacher.email,
+                type: 'pass_done',
+                title: strings.passDone,
+                subTitle: strings.passDoneTextStudent,
+                timestamp: time,
+                pass_time: timestamp,
+                minutes,
+                name
+            }
+            sendMessage(mess1, [legacy ? message.email : message.user])
+
+            const mess2: any = {
+                user: user.name,
+                email: user.email,
+                type: 'pass_done',
+                title: strings.passDone,
+                subTitle: strings.passDoneTextTeacher.format(user.name),
+                timestamp: time,
+                pass_time: timestamp,
+                minutes,
+                name
+            }
+            sendMessage(mess2, [legacy ? message.user : message.email])
+        }, minutes * 60)
+    }
     
     const functions: IData = {
         get_ms_data: async () => send(await msUserExists()),
@@ -346,7 +417,7 @@ export default async (message: any, ws: WebSocket, db: Db) => {
 
             if (district.legacy) {
                 if (passesLeft > 0) {
-                    functionsWithVerify.approvePass()
+                    approvePass()
                     mess.type = "custom",
                     mess.title = strings.passUsed,
                     mess.subTitle = strings.passUsedText.format(user.name, message.dest, String(passesLeft), String(passesByTeacher))
@@ -383,76 +454,7 @@ export default async (message: any, ws: WebSocket, db: Db) => {
             users.updateOne({'email': message.email}, {'$pull': {'messages': {'timestamp': message.message_time}}})
             sendSuccess()
         },
-        approve_pass: async () => {
-            const district = await districts.findOne({domains: message.email.split('@')[1]})
-            if (!district) {sendError('cof'); return}
-            const legacy = district.legacy
-            const teacher = await users.findOne({email: legacy ? message.user : message.email})
-            const user = await users.findOne({email: legacy ? message.email : message.user})
-            if (!user || !district || !teacher) { sendError('cof'); return }
-
-            const name = message.free ? 'Free' : Number(district.pass) - (user.history as any[]).filter(h => h.name !== "Free").length
-            
-            const timestamp = Date.now() / 1000
-
-            const minutes = legacy ? 5 : message.minutes;
-            const destination = legacy ? message.dest : message.destination;
-            users.updateOne({email: legacy ? message.email : message.user}, {$push: {history: {
-                destination,
-                teacher: teacher.name,
-                timestamp,
-                minutes,
-                name
-            }}})
-
-            const mess: any = {
-                user: teacher.name,
-                email: teacher.email,
-                type: 'pass_approved',
-                title: strings.passApproved,
-                subTitle: strings.passApprovedText.format(destination, minutes),
-                timestamp,
-                minutes,
-                name
-            }
-            sendMessage(mess, [legacy ? message.email : message.user])
-            sendSuccess()
-
-            setTimeout(async() => {
-                const user = await users.findOne({email: legacy ? message.email : message.user})
-                if (!user) { sendError('cof'); return }
-                if ((user.history as any[]).find(h => h.timestamp === timestamp && h.timestamp_end)) {
-                    return
-                }
-
-                const time = Date.now() / 1000
-                const mess1: any = {
-                    user: teacher.name,
-                    email: teacher.email,
-                    type: 'pass_done',
-                    title: strings.passDone,
-                    subTitle: strings.passDoneTextStudent,
-                    timestamp: time,
-                    pass_time: timestamp,
-                    minutes,
-                    name
-                }
-                sendMessage(mess1, [legacy ? message.email : message.user])
-
-                const mess2: any = {
-                    user: user.name,
-                    email: user.email,
-                    type: 'pass_done',
-                    title: strings.passDone,
-                    subTitle: strings.passDoneTextTeacher.format(user.name),
-                    timestamp: time,
-                    pass_time: timestamp,
-                    minutes,
-                    name
-                }
-                sendMessage(mess2, [legacy ? message.user : message.email])
-            }, minutes * 60)
-        },
+        approve_pass: () => approvePass(),
         back_from_pass: async () => {
             const user = await users.findOne({email: message.email})
             if (!user) { sendError('cof'); return }
