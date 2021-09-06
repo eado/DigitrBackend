@@ -346,7 +346,7 @@ export default async (message: any, ws: WebSocket, db: Db) => {
 
             if (district.legacy) {
                 if (passesLeft > 0) {
-                    // approvePass(true)
+                    functionsWithVerify.approvePass()
                     mess.type = "custom",
                     mess.title = strings.passUsed,
                     mess.subTitle = strings.passUsedText.format(user.name, message.dest, String(passesLeft), String(passesByTeacher))
