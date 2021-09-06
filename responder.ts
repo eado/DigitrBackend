@@ -289,7 +289,7 @@ export default async (message: any, ws: WebSocket, db: Db) => {
                 name
             }
             sendMessage(mess2, [legacy ? message.user : message.email])
-        }, minutes * 60)
+        }, minutes * 60 * 1000)
     }
     
     const functions: IData = {
