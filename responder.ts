@@ -568,10 +568,10 @@ export default async (message: any, ws: WebSocket, db: Db) => {
         start_fresh: async () => {
             const district = await districts.findOne({domains: message.email.split('@')[1]})
             if (!district ) { sendError('cof'); return }
-            users.deleteOne({'domain': {'$in': district.domains}, 'email': {'$not': {'$eq': message.email}}})
+            users.deleteMany({'domain': {'$in': district.domains}, 'email': {'$not': {'$eq': message.email}}})
             district.teachers = [message.email]
             district.students = []
-            districts.updateOne({domains: district.domains}, district)
+            districts.updateOne({domains: district.domains[0]}, district)
         },
         get_payment_stats: async () => {
             const district = await districts.findOne({domains: message.email.split('@')[1]})
