@@ -94,7 +94,7 @@ client.connect(() => {
       })
     }, 3600 * 1000)
 
-    users.createIndex({'email': 1}, {unique: true})
+    // users.createIndex({'email': 1}, {unique: true})
 
     console.log("Secure WebSocket server listening on port 9001...")
 })
