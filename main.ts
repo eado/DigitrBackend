@@ -53,16 +53,21 @@ client.connect(() => {
       const now = (Date.now() / 1000)
       users.find({}, {projection: {history: true}}).forEach(user => {
         const history: any[] = user.history ? user.history : []
-        history.forEach(hist => {
+        let changed = false
+        for (let hist of history) {
           if (hist.timestamp_end) {
             return
           } else {
             if ((now - hist.timestamp) >= 84600) {
+              changed = true
               hist.timestamp_end = hist.timestamp + 3600
-              users.updateOne({email: user.email, 'history.timestamp': hist.timestamp}, {'$set': {'history.$.timestamp_end': hist.timestamp + 3600}})
             }
           }
-        })
+        }
+        if (changed) {
+          console.log(history)
+          users.updateOne({email: user.email}, {'$set': {'history': history}})
+        }
       })
     }, 3600 * 1000)
 
